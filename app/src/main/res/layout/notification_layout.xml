@@ -41,9 +41,9 @@
         android:layout_height="wrap_content"
         android:paddingStart="8dp"
         android:paddingEnd="8dp"
-        android:thumb="@drawable/ic_pause"
+        android:progressBackgroundTint="@color/colorPrimaryDark"
         android:progressTint="@color/colorAccent"
-        android:progressBackgroundTint="@color/colorPrimaryDark" />
+        android:thumb="@drawable/ic_pause" />
 
 </LinearLayout>
 

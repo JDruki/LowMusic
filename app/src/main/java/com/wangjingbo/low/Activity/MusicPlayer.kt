@@ -34,14 +34,7 @@ class MusicPlayer : AppCompatActivity(), View.OnClickListener {
     private lateinit var artist: String
     private lateinit var album: String
     private var isPlaying: Boolean = false
-    private var currentProgress: Int = 0
     private var mod: Int = 0
-    private val progressReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) {
-            val progress = intent?.getIntExtra("progress", 0) ?: 0
-            seekBar.progress = progress
-        }
-    }
     private val seekToReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             val progress = intent?.getIntExtra("progress", 0) ?: 0
@@ -101,27 +94,7 @@ class MusicPlayer : AppCompatActivity(), View.OnClickListener {
         startService(intent)
         updateSongDetails(songName,artist)
 
-        // 设置进度条监听器
-        seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                if (fromUser) {
-                    val intent = Intent("SEEK_TO").apply {
-                        putExtra("progress", progress)
-                    }
-                    sendBroadcast(intent)
-                }
-            }
-
-
-
-            override fun onStartTrackingTouch(seekBar: SeekBar?) {
-                // 未使用
-            }
-
-            override fun onStopTrackingTouch(seekBar: SeekBar?) {
-                // 未使用
-            }
-        })
+        // 设置进度条监听器 )
 
     }
     // 更新歌曲详情
