@@ -38,7 +38,11 @@ class MusicListFragment : Fragment() {
     private lateinit var dbHelper: DatabaseHelper
     private var selectedSong: Song? = null
     private lateinit var url: String  // 在这里声明url变量
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View? {
         val view = inflater.inflate(R.layout.fragment_music_list, container, false)
 
         musicListView = view.findViewById(R.id.musicListView)
@@ -54,9 +58,10 @@ class MusicListFragment : Fragment() {
             selectedSong?.let {
                 val songId = it.id
                 val songLevel = "exhigh"
-                GetSongUrlTask().execute(songId, songLevel)
+                dbHelper.GetSongUrlTask().execute(songId, songLevel)
             }
         }
+
 
         musicListView.setOnItemLongClickListener { _, _, position, _ ->
             val selectedSong = musicListAdapter.getItem(position)
@@ -64,7 +69,7 @@ class MusicListFragment : Fragment() {
                 // 执行删除或下载操作
                 val songId = it.id
                 val songLevel = "exhigh"
-                GetSongUrlTasks().execute(songId, songLevel)
+                dbHelper.GetSongUrlTask().execute(songId, songLevel)
                 deleteOrDownloadSong(selectedSong)
             }
             true
@@ -142,7 +147,8 @@ class MusicListFragment : Fragment() {
         // 执行下载操作
         val fileName = "${song.name}.mp3" // 设置保存的文件名
 
-        val downloadManager = requireActivity().getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+        val downloadManager =
+            requireActivity().getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
         val downloadUri = Uri.parse(url)
 
         val request = DownloadManager.Request(downloadUri).apply {
@@ -192,7 +198,8 @@ class MusicListFragment : Fragment() {
         override fun onCreate(db: SQLiteDatabase?) {
             db?.execSQL("CREATE TABLE songs (_id TEXT PRIMARY KEY, name TEXT, artist TEXT, album TEXT)")
             db?.execSQL("CREATE TABLE new_songs (_id INTEGER PRIMARY KEY AUTOINCREMENT, url TEXT, name TEXT, artist TEXT, album TEXT)")
-            db?.execSQL("CREATE TABLE song_heart (_id INTEGER PRIMARY KEY AUTOINCREMENT, url TEXT, name TEXT, artist TEXT, album TEXT)")        }
+            db?.execSQL("CREATE TABLE song_heart (_id INTEGER PRIMARY KEY AUTOINCREMENT, url TEXT, name TEXT, artist TEXT, album TEXT)")
+        }
 
         override fun onUpgrade(db: SQLiteDatabase?, oldVersion: Int, newVersion: Int) {
             if (oldVersion < newVersion) {
@@ -240,7 +247,7 @@ class MusicListFragment : Fragment() {
             database.close()
         }
 
-        fun insertSong(song: Song) {
+        fun insertSong(song: Song): Boolean {
             val database = writableDatabase
             val values = ContentValues().apply {
                 put("_id", song.id)
@@ -248,136 +255,188 @@ class MusicListFragment : Fragment() {
                 put("artist", song.artist)
                 put("album", song.album)
             }
-            database.insert("songs", null, values)
+
+            val selection = "name = ? AND artist = ? AND album = ?"
+            val selectionArgs = arrayOf(song.name, song.artist, song.album)
+            val cursor = database.query(
+                "songs",
+                null,
+                selection,
+                selectionArgs,
+                null,
+                null,
+                null
+            )
+
+            val exists = cursor.count > 0
+            cursor.close()
+
+            if (!exists) {
+                database.insert("songs", null, values)
+            }
+
             database.close()
-        }
-    }
-    inner class GetSongUrlTasks : AsyncTask<String, Void, String>() {
 
-        override fun doInBackground(vararg params: String): String? {
-            val songId = params[0]
-            val songLevel = params[1]
-            val url = "http://38.47.97.104:3000/song/url/v1?id=$songId&level=$songLevel"
-
-            try {
-                val connection = URL(url).openConnection() as HttpURLConnection
-                connection.requestMethod = "GET"
-
-                val responseCode = connection.responseCode
-                if (responseCode == HttpURLConnection.HTTP_OK) {
-                    val inputStream = connection.inputStream
-                    val reader = BufferedReader(InputStreamReader(inputStream))
-                    val response = StringBuilder()
-                    var line: String?
-                    while (reader.readLine().also { line = it } != null) {
-                        response.append(line)
-                    }
-                    reader.close()
-                    inputStream.close()
-                    return response.toString()
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-
-            return null
+            return exists
         }
 
-        override fun onPostExecute(result: String?) {
-            super.onPostExecute(result)
+        inner class GetSongUrlTasks : AsyncTask<String, Void, String>() {
 
-            result?.let {
+            override fun doInBackground(vararg params: String): String? {
+                val songId = params[0]
+                val songLevel = params[1]
+                val url = "http://38.47.97.104:3000/song/url/v1?id=$songId&level=$songLevel"
+
                 try {
-                    val jsonObject = JSONObject(it)
-                    val dataArray = jsonObject.getJSONArray("data")
-                    if (dataArray.length() > 0) {
-                        val dataObject = dataArray.getJSONObject(0)
-                        val id = dataObject.getInt("id")
-                        url = dataObject.getString("url")
+                    val connection = URL(url).openConnection() as HttpURLConnection
+                    connection.requestMethod = "GET"
 
+                    val responseCode = connection.responseCode
+                    if (responseCode == HttpURLConnection.HTTP_OK) {
+                        val inputStream = connection.inputStream
+                        val reader = BufferedReader(InputStreamReader(inputStream))
+                        val response = StringBuilder()
+                        var line: String?
+                        while (reader.readLine().also { line = it } != null) {
+                            response.append(line)
+                        }
+                        reader.close()
+                        inputStream.close()
+                        return response.toString()
                     }
-                } catch (e: JSONException) {
+                } catch (e: Exception) {
                     e.printStackTrace()
                 }
+
+                return null
             }
-        }
-    }
 
-    inner class GetSongUrlTask : AsyncTask<String, Void, String>() {
+            override fun onPostExecute(result: String?) {
+                super.onPostExecute(result)
 
-        override fun doInBackground(vararg params: String): String? {
-            val songId = params[0]
-            val songLevel = params[1]
-            val url = "http://38.47.97.104:3000/song/url/v1?id=$songId&level=$songLevel"
+                result?.let {
+                    try {
+                        val jsonObject = JSONObject(it)
+                        val dataArray = jsonObject.getJSONArray("data")
+                        if (dataArray.length() > 0) {
+                            val dataObject = dataArray.getJSONObject(0)
+                            val id = dataObject.getInt("id")
+                            url = dataObject.getString("url")
 
-            try {
-                val connection = URL(url).openConnection() as HttpURLConnection
-                connection.requestMethod = "GET"
+                            val dbHelper = DatabaseHelper(requireContext())
 
-                val responseCode = connection.responseCode
-                if (responseCode == HttpURLConnection.HTTP_OK) {
-                    val inputStream = connection.inputStream
-                    val reader = BufferedReader(InputStreamReader(inputStream))
-                    val response = StringBuilder()
-                    var line: String?
-                    while (reader.readLine().also { line = it } != null) {
-                        response.append(line)
+                            // Check if the song already exists in the database
+                            val song = selectedSong ?: return
+                            val songExists = dbHelper.insertSong(song)
+
+                            if (!songExists) {
+                                // Save the song to the new database
+                                val newDbHelper = DatabaseHelper(requireContext())
+                                val newDatabase = newDbHelper.writableDatabase
+
+                                val values = ContentValues().apply {
+                                    put("url", url)
+                                    put("name", song.name)
+                                    put("artist", song.artist)
+                                    put("album", song.album)
+                                }
+
+                                newDatabase.insert("new_songs", null, values)
+                                newDatabase.close()
+                            }
+
+                            // 跳转到MusicPlayerActivity并传递相关信息
+                            val intent = Intent(requireContext(), MusicPlayer::class.java)
+                            intent.putExtra("url", url)
+                            intent.putExtra("name", song.name)
+                            intent.putExtra("artist", song.artist)
+                            intent.putExtra("album", song.album)
+                            startActivity(intent)
+                        }
+                    } catch (e: JSONException) {
+                        e.printStackTrace()
                     }
-                    reader.close()
-                    inputStream.close()
-                    return response.toString()
                 }
-            } catch (e: Exception) {
-                e.printStackTrace()
             }
 
-            return null
         }
 
-        override fun onPostExecute(result: String?) {
-            super.onPostExecute(result)
+        inner class GetSongUrlTask : AsyncTask<String, Void, String>() {
 
-            result?.let {
+            override fun doInBackground(vararg params: String): String? {
+                val songId = params[0]
+                val songLevel = params[1]
+                val url = "http://38.47.97.104:3000/song/url/v1?id=$songId&level=$songLevel"
+
                 try {
-                    val jsonObject = JSONObject(it)
-                    val dataArray = jsonObject.getJSONArray("data")
-                    if (dataArray.length() > 0) {
-                        val dataObject = dataArray.getJSONObject(0)
-                        val id = dataObject.getInt("id")
-                        url = dataObject.getString("url")
+                    val connection = URL(url).openConnection() as HttpURLConnection
+                    connection.requestMethod = "GET"
 
-                        val dbHelper = DatabaseHelper(requireContext())
-
-                        // Check if the song already exists in the database
-                        val song = selectedSong ?: return
-                        if (!dbHelper.isSongExist(song)) {
-                            dbHelper.insertSong(song)
+                    val responseCode = connection.responseCode
+                    if (responseCode == HttpURLConnection.HTTP_OK) {
+                        val inputStream = connection.inputStream
+                        val reader = BufferedReader(InputStreamReader(inputStream))
+                        val response = StringBuilder()
+                        var line: String?
+                        while (reader.readLine().also { line = it } != null) {
+                            response.append(line)
                         }
-
-                        // Save the song to the new database
-                        val newDbHelper = DatabaseHelper(requireContext())
-                        val newDatabase = newDbHelper.writableDatabase
-
-                        val values = ContentValues().apply {
-                            put("url", url)
-                            put("name", song.name)
-                            put("artist", song.artist)
-                            put("album", song.album)
-                        }
-
-                        newDatabase.insert("new_songs", null, values)
-                        newDatabase.close()
-
-                        // 跳转到MusicPlayerActivity并传递相关信息
-                        val intent = Intent(requireContext(), MusicPlayer::class.java)
-                        intent.putExtra("url", url)
-                        intent.putExtra("name", song.name)
-                        intent.putExtra("artist", song.artist)
-                        intent.putExtra("album", song.album)
-                        startActivity(intent)
+                        reader.close()
+                        inputStream.close()
+                        return response.toString()
                     }
-                } catch (e: JSONException) {
+                } catch (e: Exception) {
                     e.printStackTrace()
+                }
+
+                return null
+            }
+
+            override fun onPostExecute(result: String?) {
+                super.onPostExecute(result)
+
+                result?.let {
+                    try {
+                        val jsonObject = JSONObject(it)
+                        val dataArray = jsonObject.getJSONArray("data")
+                        if (dataArray.length() > 0) {
+                            val dataObject = dataArray.getJSONObject(0)
+                            val id = dataObject.getInt("id")
+                            url = dataObject.getString("url")
+
+                            val dbHelper = DatabaseHelper(requireContext())
+
+                            // Check if the song already exists in the database
+                            val song = selectedSong ?: return
+                            if (!dbHelper.isSongExist(song)) {
+                                dbHelper.insertSong(song)
+                            }
+
+                            // Save the song to the new database
+                            val newDbHelper = DatabaseHelper(requireContext())
+                            val newDatabase = newDbHelper.writableDatabase
+
+                            val values = ContentValues().apply {
+                                put("url", url)
+                                put("name", song.name)
+                                put("artist", song.artist)
+                                put("album", song.album)
+                            }
+
+                            newDatabase.insert("new_songs", null, values)
+                            newDatabase.close()
+
+                            // 跳转到MusicPlayerActivity并传递相关信息
+                            val intent = Intent(requireContext(), MusicPlayer::class.java)
+                            intent.putExtra("url", url)
+                            intent.putExtra("name", song.name)
+                            intent.putExtra("artist", song.artist)
+                            intent.putExtra("album", song.album)
+                            startActivity(intent)
+                        }
+                    } catch (e: JSONException) {
+                        e.printStackTrace()
+                    }
                 }
             }
         }
