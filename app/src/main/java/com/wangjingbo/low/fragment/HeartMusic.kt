@@ -37,7 +37,7 @@ class HeartMusic : Fragment() {
 
         playlistListView.setOnItemClickListener { _, _, position, _ ->
             val selectedSong = playlist[position]
-            playSong(selectedSong.url)
+            playSong(selectedSong.url, selectedSong.name, selectedSong.artist)
         }
 
         playlistListView.setOnItemLongClickListener { _, _, position, _ ->
@@ -89,9 +89,11 @@ class HeartMusic : Fragment() {
         return playlist
     }
 
-    private fun playSong(url: String) {
+    private fun playSong(url: String, name: String, artist: String) {
         val intent = Intent(requireContext(), MusicPlayer::class.java)
         intent.putExtra("url", url)
+        intent.putExtra("name", name)
+        intent.putExtra("artist", artist)
         startActivity(intent)
     }
 

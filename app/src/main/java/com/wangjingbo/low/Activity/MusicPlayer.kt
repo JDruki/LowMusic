@@ -286,10 +286,12 @@ class MusicPlayer : AppCompatActivity(), View.OnClickListener {
                 if (!isPlaying) {
                     playSong()
                     playButton.text = "播放"
+                    Toast.makeText(this, "音乐已暂停", Toast.LENGTH_SHORT).show()
                 }
                 else{
                     playSong()
                     playButton.text = "暂停"
+                    Toast.makeText(this, "音乐已播放", Toast.LENGTH_SHORT).show()
                 }
             }
             R.id.nextButton -> {
