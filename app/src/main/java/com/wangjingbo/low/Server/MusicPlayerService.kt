@@ -9,17 +9,32 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.database.sqlite.SQLiteDatabase
+import android.database.sqlite.SQLiteOpenHelper
 import android.graphics.BitmapFactory
 import android.media.MediaPlayer
 import android.os.Build
 import android.os.Handler
 import android.os.IBinder
+import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
+import com.wangjingbo.low.Activity.MusicPlayer
 import com.wangjingbo.low.R
+import com.wangjingbo.low.Routh.PlayMode
+
 class MusicPlayerService : Service() {
+    private val togglePlayModeReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            togglePlayMode()
+            updatePlayModeButton()
+        }
+    }
+    private var playMode: PlayMode = PlayMode.ORDER
     private lateinit var mediaPlayer: MediaPlayer
+    private var currentSongIndex: Int = 0
     private var isPlaying: Boolean = false
+    private lateinit var songsList: ArrayList<MusicPlayer.Song>
     private val pauseResumeReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             val action = intent.action
@@ -33,14 +48,33 @@ class MusicPlayerService : Service() {
         }
     }
 
+    private val playPreviousSongReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            playPreviousSong()
+        }
+    }
+    private val playNextSongReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            playNextSong()
+        }
+    }
+
     // 当服务创建时调用
     override fun onCreate() {
         val seekToFilter = IntentFilter("SEEK_TO")
         registerReceiver(seekToReceiver, seekToFilter)
         super.onCreate()
+        val togglePlayModeFilter = IntentFilter("TOGGLE_PLAY_MODE")
+        registerReceiver(togglePlayModeReceiver, togglePlayModeFilter)
+        val playPreviousSongFilter = IntentFilter("PLAY_PREVIOUS_SONG")
+        registerReceiver(playPreviousSongReceiver, playPreviousSongFilter)
         mediaPlayer = MediaPlayer()
         val filter = IntentFilter("PAUSE_RESUME")
         registerReceiver(pauseResumeReceiver, filter)
+        val playNextSongFilter = IntentFilter("PLAY_NEXT_SONG")
+        registerReceiver(playNextSongReceiver, playNextSongFilter)
+        // 启动服务并传递Intent
+        fetchSongsFromDatabase()
         // 如果设备的 Android 版本大于等于 8.0，则创建通知渠道
         val channel = NotificationChannel(
             "channel_id",
@@ -48,8 +82,10 @@ class MusicPlayerService : Service() {
             NotificationManager.IMPORTANCE_DEFAULT
         )
         val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        manager.createNotificationChannel(channel)
-    }
+        manager.createNotificationChannel(channel) }
+
+
+
 
     // 当服务启动时调用
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -58,6 +94,7 @@ class MusicPlayerService : Service() {
             val name = intent.getStringExtra("name")
             val artist = intent.getStringExtra("artist")
             val album = intent.getStringExtra("album")
+
 
 
             // 如果所有的音乐信息都不为空，则开始播放音乐
@@ -79,6 +116,9 @@ class MusicPlayerService : Service() {
         unregisterReceiver(seekToReceiver)
         super.onDestroy()
         unregisterReceiver(pauseResumeReceiver)
+        unregisterReceiver(togglePlayModeReceiver)
+        unregisterReceiver(playNextSongReceiver)
+        unregisterReceiver(playPreviousSongReceiver)
         mediaPlayer.release()
     }
 
@@ -108,6 +148,10 @@ class MusicPlayerService : Service() {
                 handler.postDelayed(this, 1000)
             }
         }, 1000)
+        // 监听音乐播放完成事件
+        mediaPlayer.setOnCompletionListener {
+            playNextSong()
+        }
     }
     // 暂停音乐的方法
     private fun pauseMusic() {
@@ -120,6 +164,7 @@ class MusicPlayerService : Service() {
         }
     }
 
+
     // 恢复音乐的方法
     private fun resumeMusic() {
         if (!mediaPlayer.isPlaying) {
@@ -130,6 +175,113 @@ class MusicPlayerService : Service() {
             val pauseResumeIcon = R.drawable.ic_pause
         }
     }
+
+    // 播放上一首歌曲
+    private fun playPreviousSong() {
+        when (playMode) {
+            PlayMode.ORDER -> {
+                if (currentSongIndex > 0) {
+                    currentSongIndex--
+                } else {
+                    currentSongIndex = songsList.size - 1
+                }
+            }
+
+            PlayMode.SHUFFLE -> {
+                currentSongIndex = (0 until songsList.size).random()
+            }
+
+            PlayMode.REPEAT -> {
+                // 单曲循环，不改变 currentSongIndex 的值
+            }
+        }
+        val previousSong = songsList[currentSongIndex]
+        playMusic(previousSong.url, previousSong.name, previousSong.artist, previousSong.album)
+        val playSongIntent = Intent("PLAY_SONG")
+        playSongIntent.putExtra("songName", previousSong.name)
+        playSongIntent.putExtra("artist", previousSong.artist)
+        sendBroadcast(playSongIntent)
+    }
+
+    // 播放下一首歌曲
+    private fun playNextSong() {
+        when (playMode) {
+            PlayMode.ORDER -> {
+                if (currentSongIndex < songsList.size - 1) {
+                    currentSongIndex++
+                } else {
+                    currentSongIndex = 0
+                }
+            }
+
+            PlayMode.SHUFFLE -> {
+                currentSongIndex = (0 until songsList.size).random()
+            }
+
+            PlayMode.REPEAT -> {
+                // 单曲循环，不改变 currentSongIndex 的值
+            }
+        }
+
+        val nextSong = songsList[currentSongIndex]
+        playMusic(nextSong.url, nextSong.name, nextSong.artist, nextSong.album)
+
+        val playSongIntent = Intent("PLAY_SONG")
+        playSongIntent.putExtra("songName", nextSong.name)
+        playSongIntent.putExtra("artist", nextSong.artist)
+        sendBroadcast(playSongIntent)
+    }
+
+    // 从数据库获取歌曲列表
+    private fun fetchSongsFromDatabase() {
+        val dbHelper = DatabaseHelper(this)
+        val database = dbHelper.readableDatabase
+
+        val projection = arrayOf("url", "name", "artist", "album")
+        val cursor = database.query("new_songs", projection, null, null, null, null, null)
+
+        songsList = ArrayList()
+        if (cursor != null && cursor.moveToFirst()) {
+            do {
+                val album = cursor.getString(cursor.getColumnIndexOrThrow("album"))
+                val url = cursor.getString(cursor.getColumnIndexOrThrow("url"))
+                val name = cursor.getString(cursor.getColumnIndexOrThrow("name"))
+                val artist = cursor.getString(cursor.getColumnIndexOrThrow("artist"))
+                val song = MusicPlayer.Song(url, name, artist, album)
+
+                songsList.add(song)
+            } while (cursor.moveToNext())
+            cursor.close()
+        }
+    }
+
+    // 歌曲数据类
+    data class Song(val url: String, val name: String, val artist: String)
+    // 切换播放模式
+    private fun togglePlayMode() {
+        playMode = when (playMode) {
+            PlayMode.ORDER -> PlayMode.SHUFFLE
+            PlayMode.SHUFFLE -> PlayMode.REPEAT
+            PlayMode.REPEAT -> PlayMode.ORDER
+        }
+    }
+
+    private fun updatePlayModeButton() {
+        when (playMode) {
+            PlayMode.ORDER -> {
+                Toast.makeText(this, "顺序播放", Toast.LENGTH_SHORT).show()
+            }
+
+            PlayMode.SHUFFLE -> {
+                Toast.makeText(this, "随机播放", Toast.LENGTH_SHORT).show()
+            }
+
+            PlayMode.REPEAT -> {
+                Toast.makeText(this, "单曲循环", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
 
     private fun createNotification(name: String, artist: String, maxProgress: Int, currentProgress: Int): Notification {
         // 创建暂停/恢复操作的 PendingIntent
@@ -208,8 +360,8 @@ class MusicPlayerService : Service() {
     }
 
     // 显示通知的方法
+// 显示通知的方法
     private fun showNotification(name: String, artist: String) {
-
         // 创建暂停/恢复操作的 PendingIntent
         val pauseResumeIntent = Intent(this, MusicPlayerService::class.java)
         pauseResumeIntent.action = "PAUSE_RESUME"
@@ -264,11 +416,40 @@ class MusicPlayerService : Service() {
         val currentProgress = mediaPlayer.currentPosition
         notificationBuilder.setProgress(maxProgress, currentProgress, false)
 
+        // 设置通知内容（歌曲名和艺术家）
+        notificationBuilder.setContentTitle(name)
+        notificationBuilder.setContentText(artist)
+
         // 构建通知
         val notification = notificationBuilder.build()
 
         // 显示通知
         startForeground(1, notification)
+    }
+
+    inner class DatabaseHelper(context: Context) :
+        SQLiteOpenHelper(context, "songs.db", null, 2) {
+
+        override fun onCreate(db: SQLiteDatabase?) {
+            db?.execSQL("CREATE TABLE songs (_id TEXT PRIMARY KEY, name TEXT, artist TEXT, album TEXT)")
+            db?.execSQL("CREATE TABLE new_songs (_id INTEGER PRIMARY KEY AUTOINCREMENT, url TEXT, name TEXT, artist TEXT, album TEXT)")
+            db?.execSQL("CREATE TABLE song_heart (_id INTEGER PRIMARY KEY AUTOINCREMENT, url TEXT, name TEXT, artist TEXT, album TEXT)")        }
+
+        override fun onUpgrade(db: SQLiteDatabase?, oldVersion: Int, newVersion: Int) {
+            if (oldVersion < newVersion) {
+                // Perform necessary upgrade operations here
+            }
+        }
+
+        override fun onDowngrade(db: SQLiteDatabase?, oldVersion: Int, newVersion: Int) {
+            if (newVersion < oldVersion) {
+                // Perform necessary downgrade operations here
+                db?.execSQL("DROP TABLE IF EXISTS songs")
+                db?.execSQL("DROP TABLE IF EXISTS new_songs")
+                db?.execSQL("DROP TABLE IF EXISTS song_heart")
+                onCreate(db)
+            }
+        }
     }
 }
 

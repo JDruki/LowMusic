@@ -29,14 +29,19 @@ class MusicPlayer : AppCompatActivity(), View.OnClickListener {
     private lateinit var seekBar: SeekBar
     private lateinit var hartMusicButton: Button
     private lateinit var playModeButton: Button
-    private var currentSongIndex: Int = 0
-    private lateinit var songsList: ArrayList<Song>
     private lateinit var songUrl: String
     private lateinit var songName: String
     private lateinit var artist: String
     private lateinit var album: String
-    private var playMode: PlayMode = PlayMode.ORDER
     private var isPlaying: Boolean = false
+    private var currentProgress: Int = 0
+    private var mod: Int = 0
+    private val progressReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            val progress = intent?.getIntExtra("progress", 0) ?: 0
+            seekBar.progress = progress
+        }
+    }
     private val seekToReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             val progress = intent?.getIntExtra("progress", 0) ?: 0
@@ -52,11 +57,14 @@ class MusicPlayer : AppCompatActivity(), View.OnClickListener {
     override fun onStop() {
         super.onStop()
         unregisterReceiver(seekToReceiver)
+
     }
 
 
     // 创建活动
     override fun onCreate(savedInstanceState: Bundle?) {
+        val filter = IntentFilter("PLAY_SONG")
+        registerReceiver(playSongReceiver, filter)
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_music_player)
         playButton = findViewById(R.id.playButton)
@@ -73,6 +81,7 @@ class MusicPlayer : AppCompatActivity(), View.OnClickListener {
         previousButton.setOnClickListener(this)
         hartMusicButton.setOnClickListener(this)
         playModeButton.setOnClickListener(this)
+        seekBar = findViewById(R.id.seekBar)
         // 从Intent中获取音乐相关数据
         val extras = intent.extras
         if (extras != null) {
@@ -81,7 +90,7 @@ class MusicPlayer : AppCompatActivity(), View.OnClickListener {
             artist = extras.getString("artist", "")
             album = extras.getString("album", "")
         }
-        
+
         val intent = Intent(this, MusicPlayerService::class.java).apply {
             putExtra("url", songUrl)
             putExtra("name", songName)
@@ -90,9 +99,7 @@ class MusicPlayer : AppCompatActivity(), View.OnClickListener {
         }
         // 启动服务并传递Intent
         startService(intent)
-        fetchSongsFromDatabase()
-        updateSongDetails()
-//        prepareMediaPlayer(songUrl)
+        updateSongDetails(songName,artist)
 
         // 设置进度条监听器
         seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
@@ -118,11 +125,18 @@ class MusicPlayer : AppCompatActivity(), View.OnClickListener {
 
     }
     // 更新歌曲详情
-    private fun updateSongDetails() {
-        songNameTextView.text = songName
+    private fun updateSongDetails(name: String?, artist: String?) {
+        songNameTextView.text = name
         artistTextView.text = artist
     }
 
+    private val playSongReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            val receivedSongName = intent?.getStringExtra("songName")
+            val receivedArtist = intent?.getStringExtra("artist")
+            updateSongDetails(receivedSongName, receivedArtist)
+        }
+    }
 
     // 播放歌曲
 // 播放歌曲
@@ -136,107 +150,24 @@ class MusicPlayer : AppCompatActivity(), View.OnClickListener {
 
     // 播放下一首歌曲
     private fun playNextSong() {
-        when (playMode) {
-            PlayMode.ORDER -> {
-                if (currentSongIndex < songsList.size - 1) {
-                    currentSongIndex++
-                } else {
-                    currentSongIndex = 0
-                }
-            }
-
-            PlayMode.SHUFFLE -> {
-                currentSongIndex = (0 until songsList.size).random()
-            }
-
-            PlayMode.REPEAT -> {
-                // 单曲循环，不改变 currentSongIndex 的值
-            }
-        }
-        val nextSong = songsList[currentSongIndex]
-        updateSongDetails(nextSong.name, nextSong.artist)
+        val intent = Intent("PLAY_NEXT_SONG")
+        sendBroadcast(intent)
     }
 
     // 播放上一首歌曲
     private fun playPreviousSong() {
-        when (playMode) {
-            PlayMode.ORDER -> {
-                if (currentSongIndex > 0) {
-                    currentSongIndex--
-                } else {
-                    currentSongIndex = songsList.size - 1
-                }
-            }
-
-            PlayMode.SHUFFLE -> {
-                currentSongIndex = (0 until songsList.size).random()
-            }
-
-            PlayMode.REPEAT -> {
-                // 单曲循环，不改变 currentSongIndex 的值
-            }
-        }
-        val previousSong = songsList[currentSongIndex]
-        updateSongDetails(previousSong.name, previousSong.artist)
-    }
-
-    // 更新歌曲详情
-    private fun updateSongDetails(name: String, artist: String) {
-        songNameTextView.text = name
-        artistTextView.text = artist
-    }
-
-    // 从数据库获取歌曲列表
-    private fun fetchSongsFromDatabase() {
-        val dbHelper = DatabaseHelper(this)
-        val database = dbHelper.readableDatabase
-
-        val projection = arrayOf("url", "name", "artist")
-        val cursor = database.query("new_songs", projection, null, null, null, null, null)
-
-        songsList = ArrayList()
-        if (cursor != null && cursor.moveToFirst()) {
-            do {
-                val url = cursor.getString(cursor.getColumnIndexOrThrow("url"))
-                val name = cursor.getString(cursor.getColumnIndexOrThrow("name"))
-                val artist = cursor.getString(cursor.getColumnIndexOrThrow("artist"))
-                val song = Song(url, name, artist)
-                songsList.add(song)
-            } while (cursor.moveToNext())
-            cursor.close()
-        }
+        val broadcastIntent = Intent("PLAY_PREVIOUS_SONG")
+        sendBroadcast(broadcastIntent)
     }
 
     // 歌曲数据类
-    data class Song(val url: String, val name: String, val artist: String)
+    data class Song(val url: String, val name: String, val artist: String, val album : String) {
+    }
 
     // 切换播放模式
     private fun togglePlayMode() {
-        playMode = when (playMode) {
-            PlayMode.ORDER -> PlayMode.SHUFFLE
-            PlayMode.SHUFFLE -> PlayMode.REPEAT
-            PlayMode.REPEAT -> PlayMode.ORDER
-        }
-    }
-
-    // 更新播放模式按钮
-    private fun updatePlayModeButton() {
-        when (playMode) {
-            PlayMode.ORDER -> {
-                playModeButton.text = "顺序播放"
-                Toast.makeText(this, "顺序播放", Toast.LENGTH_SHORT).show()
-            }
-
-            PlayMode.SHUFFLE -> {
-                playModeButton.text = "随机播放"
-                Toast.makeText(this, "随机播放", Toast.LENGTH_SHORT).show()
-            }
-
-            PlayMode.REPEAT -> {
-                playModeButton.text = "单曲循环"
-                Toast.makeText(this, "单曲循环", Toast.LENGTH_SHORT).show()
-            }
-        }
+        val togglePlayModeIntent = Intent("TOGGLE_PLAY_MODE")
+        sendBroadcast(togglePlayModeIntent)
     }
 
     // 将歌曲插入数据库
@@ -309,7 +240,25 @@ class MusicPlayer : AppCompatActivity(), View.OnClickListener {
             R.id.playModeButton -> {
                 togglePlayMode()
                 // 更新播放模式按钮的图标和提示
-                updatePlayModeButton()
+                when (mod) {
+                    0 -> {
+                        playModeButton.text = "随机播放"
+
+                        mod =1
+                    }
+
+                    1 -> {
+                        playModeButton.text = "单曲循环"
+
+                        mod =2
+                    }
+
+                    2 -> {
+                        playModeButton.text = "顺序播放"
+
+                        mod =0
+                    }
+                }
             }
         }
     }
