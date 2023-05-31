@@ -1,0 +1,18 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/menu_search"
+        android:title="@string/search"
+        android:icon="@drawable/search" />
+    <item
+        android:id="@+id/menu_music_list"
+        android:title="@string/music_list"
+        android:icon="@drawable/music_list" />
+    <item
+        android:id="@+id/menu_playlist"
+        android:title="@string/playlist"
+        android:icon="@drawable/music_play_list" />
+    <item
+        android:id="@+id/menu_heartmusic"
+        android:title="@string/download"
+        android:icon="@drawable/download" />
+</menu>

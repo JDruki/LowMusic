@@ -1,0 +1,32 @@
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/musicList">
+
+    <fragment
+        android:id="@+id/search"
+        android:name="com.wangjingbo.low.fragment.SearchFragment"
+        android:label="搜索"
+        tools:layout="@layout/fragment_search" />
+
+    <fragment
+        android:id="@+id/musicList"
+        android:name="com.wangjingbo.low.fragment.MusicListFragment"
+        android:label="音乐列表"
+        tools:layout="@layout/fragment_music_list" />
+
+    <fragment
+        android:id="@+id/playlist"
+        android:name="com.wangjingbo.low.fragment.PlaylistFragment"
+        android:label="播放列表"
+        tools:layout="@layout/fragment_playlist" />
+
+    <fragment
+        android:id="@+id/heartmusic"
+        android:name="com.wangjingbo.low.fragment.HeartMusic"
+        android:label="本地音乐"
+        tools:layout="@layout/fragment_download" />
+
+</navigation>
+

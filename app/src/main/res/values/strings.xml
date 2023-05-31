@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">Low</string>
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="search">Search</string>
+    <string name="music_list">Music List</string>
+    <string name="playlist">Playlist</string>
+    <string name="download">Download</string>
+</resources>
