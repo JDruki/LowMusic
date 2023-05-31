@@ -88,6 +88,7 @@ class MusicPlayerService : Service() {
         mediaPlayer.setDataSource(url)
         mediaPlayer.prepare()
         mediaPlayer.start()
+        isPlaying = true
 
         // 显示通知
         showNotification(name, artist)

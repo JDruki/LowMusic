@@ -17,11 +17,11 @@ import com.wangjingbo.low.Routh.PlayMode
 import com.wangjingbo.low.Server.MusicPlayerService
 import android.content.BroadcastReceiver
 import android.content.IntentFilter
+import android.media.MediaPlayer
 
 // 音乐播放器类
 class MusicPlayer : AppCompatActivity(), View.OnClickListener {
     private lateinit var playButton: Button
-    private lateinit var pauseButton: Button
     private lateinit var nextButton: Button
     private lateinit var previousButton: Button
     private lateinit var songNameTextView: TextView
@@ -29,7 +29,6 @@ class MusicPlayer : AppCompatActivity(), View.OnClickListener {
     private lateinit var seekBar: SeekBar
     private lateinit var hartMusicButton: Button
     private lateinit var playModeButton: Button
-    private var serviceIntent: Intent? = null
     private var currentSongIndex: Int = 0
     private lateinit var songsList: ArrayList<Song>
     private lateinit var songUrl: String
@@ -61,7 +60,6 @@ class MusicPlayer : AppCompatActivity(), View.OnClickListener {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_music_player)
         playButton = findViewById(R.id.playButton)
-        pauseButton = findViewById(R.id.pauseButton)
         nextButton = findViewById(R.id.nextButton)
         previousButton = findViewById(R.id.previousButton)
         songNameTextView = findViewById(R.id.songNameTextView)
@@ -70,15 +68,28 @@ class MusicPlayer : AppCompatActivity(), View.OnClickListener {
         hartMusicButton = findViewById(R.id.HartMusic)
         playModeButton = findViewById(R.id.playModeButton)
         playButton.setOnClickListener(this)
-        pauseButton.setOnClickListener(this)
+        playButton.isEnabled = true // 启用播放按钮
         nextButton.setOnClickListener(this)
         previousButton.setOnClickListener(this)
         hartMusicButton.setOnClickListener(this)
         playModeButton.setOnClickListener(this)
-
-
-
-        retrieveDataFromIntent()
+        // 从Intent中获取音乐相关数据
+        val extras = intent.extras
+        if (extras != null) {
+            songUrl = extras.getString("url", "")
+            songName = extras.getString("name", "")
+            artist = extras.getString("artist", "")
+            album = extras.getString("album", "")
+        }
+        
+        val intent = Intent(this, MusicPlayerService::class.java).apply {
+            putExtra("url", songUrl)
+            putExtra("name", songName)
+            putExtra("artist", artist)
+            putExtra("album", album)
+        }
+        // 启动服务并传递Intent
+        startService(intent)
         fetchSongsFromDatabase()
         updateSongDetails()
 //        prepareMediaPlayer(songUrl)
@@ -106,26 +117,6 @@ class MusicPlayer : AppCompatActivity(), View.OnClickListener {
         })
 
     }
-
-    // 从Intent中获取音乐相关数据
-    private fun retrieveDataFromIntent() {
-        val extras = intent.extras
-        if (extras != null) {
-            songUrl = extras.getString("url", "")
-            songName = extras.getString("name", "")
-            artist = extras.getString("artist", "")
-            album = extras.getString("album", "")
-        }
-    }
-
-    // 停止音乐服务
-    private fun stopMusicService() {
-        // 停止当前的服务
-        serviceIntent?.let {
-            stopService(it)
-        }
-    }
-
     // 更新歌曲详情
     private fun updateSongDetails() {
         songNameTextView.text = songName
@@ -134,26 +125,14 @@ class MusicPlayer : AppCompatActivity(), View.OnClickListener {
 
 
     // 播放歌曲
+// 播放歌曲
     private fun playSong() {
-        // 创建包含数据的Intent
-        val intent = Intent(this, MusicPlayerService::class.java).apply {
-            putExtra("url", songUrl)
-            putExtra("name", songName)
-            putExtra("artist", artist)
-            putExtra("album", album)
-        }
-        // 启动服务并传递Intent
-        startService(intent)
         val pauseResumeIntent = Intent("PAUSE_RESUME")
         sendBroadcast(pauseResumeIntent)
+        isPlaying = !isPlaying
+
     }
 
-
-    // 暂停歌曲
-    private fun pauseSong() {
-        val pauseResumeIntent = Intent("PAUSE_RESUME")
-        sendBroadcast(pauseResumeIntent)
-    }
 
     // 播放下一首歌曲
     private fun playNextSong() {
@@ -175,7 +154,6 @@ class MusicPlayer : AppCompatActivity(), View.OnClickListener {
             }
         }
         val nextSong = songsList[currentSongIndex]
-//        prepareMediaPlayer(nextSong.url)
         updateSongDetails(nextSong.name, nextSong.artist)
     }
 
@@ -199,37 +177,8 @@ class MusicPlayer : AppCompatActivity(), View.OnClickListener {
             }
         }
         val previousSong = songsList[currentSongIndex]
-//        prepareMediaPlayer(previousSong.url)
         updateSongDetails(previousSong.name, previousSong.artist)
     }
-
-//    // 准备媒体播放器
-//    private fun prepareMediaPlayer(url: String) {
-//        mediaPlayer.reset()
-//        mediaPlayer.setDataSource(url)
-//        mediaPlayer.setOnPreparedListener {
-//            val intent = Intent(this, MusicPlayerService::class.java).apply {
-//                putExtra("url", url)
-//                putExtra("name", songName)
-//                putExtra("artist", artist)
-//                putExtra("album", album)
-//            }
-//            startService(intent)
-//        }
-//        mediaPlayer.setOnCompletionListener {
-//            playNextSong()
-//        }
-//        mediaPlayer.prepareAsync()
-//        mediaPlayer.setOnPreparedListener {
-//            val intent = Intent("MEDIA_PLAYER_PREPARED").apply {
-//                putExtra("duration", mediaPlayer.duration)
-//            }
-//            sendBroadcast(intent)
-//            mediaPlayer.start()
-//        }
-//
-//    }
-
 
     // 更新歌曲详情
     private fun updateSongDetails(name: String, artist: String) {
@@ -336,15 +285,13 @@ class MusicPlayer : AppCompatActivity(), View.OnClickListener {
             R.id.playButton -> {
                 if (!isPlaying) {
                     playSong()
+                    playButton.text = "播放"
+                }
+                else{
+                    playSong()
+                    playButton.text = "暂停"
                 }
             }
-
-            R.id.pauseButton -> {
-                if (isPlaying) {
-                    pauseSong()
-                }
-            }
-
             R.id.nextButton -> {
                 playNextSong()
             }
