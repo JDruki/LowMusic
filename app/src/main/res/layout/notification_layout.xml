@@ -34,7 +34,7 @@
             android:layout_width="48dp"
             android:layout_height="48dp"
             android:contentDescription="TODO"
-            android:src="@drawable/ic_pause" />
+            android:src="@drawable/ic_pause_enabled" />
     </LinearLayout>
 
     <SeekBar
@@ -45,7 +45,7 @@
         android:paddingEnd="8dp"
         android:progressBackgroundTint="@color/colorPrimaryDark"
         android:progressTint="@color/colorAccent"
-        android:thumb="@drawable/ic_pause" />
+        android:thumb="@drawable/ic_pause_enabled" />
 
 </LinearLayout>
 

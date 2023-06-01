@@ -18,11 +18,14 @@ import com.wangjingbo.low.Server.MusicPlayerService
 import android.content.BroadcastReceiver
 import android.content.IntentFilter
 import android.media.MediaPlayer
+import android.widget.ImageView
+import com.bumptech.glide.Glide
 
 // 音乐播放器类
 class MusicPlayer : AppCompatActivity(), View.OnClickListener {
     private lateinit var playButton: Button
     private lateinit var nextButton: Button
+    private lateinit var imageView: ImageView
     private lateinit var previousButton: Button
     private lateinit var songNameTextView: TextView
     private lateinit var artistTextView: TextView
@@ -33,6 +36,7 @@ class MusicPlayer : AppCompatActivity(), View.OnClickListener {
     private lateinit var songName: String
     private lateinit var artist: String
     private lateinit var album: String
+    private lateinit var imageUrl: String
     private var isPlaying: Boolean = false
     private var mod: Int = 0
     private val seekToReceiver = object : BroadcastReceiver() {
@@ -60,6 +64,7 @@ class MusicPlayer : AppCompatActivity(), View.OnClickListener {
         registerReceiver(playSongReceiver, filter)
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_music_player)
+        imageView = findViewById(R.id.imageView)
         playButton = findViewById(R.id.playButton)
         nextButton = findViewById(R.id.nextButton)
         previousButton = findViewById(R.id.previousButton)
@@ -82,6 +87,7 @@ class MusicPlayer : AppCompatActivity(), View.OnClickListener {
             songName = extras.getString("name", "")
             artist = extras.getString("artist", "")
             album = extras.getString("album", "")
+            imageUrl = extras.getString("imageurl","")
         }
 
         val intent = Intent(this, MusicPlayerService::class.java).apply {
@@ -89,25 +95,32 @@ class MusicPlayer : AppCompatActivity(), View.OnClickListener {
             putExtra("name", songName)
             putExtra("artist", artist)
             putExtra("album", album)
+            putExtra("imageurl",imageUrl)
         }
         // 启动服务并传递Intent
         startService(intent)
-        updateSongDetails(songName,artist)
+        updateSongDetails(songName,artist,imageUrl)
 
         // 设置进度条监听器 )
 
     }
     // 更新歌曲详情
-    private fun updateSongDetails(name: String?, artist: String?) {
+    private fun updateSongDetails(name: String?, artist: String?, imageUrl: String?) {
         songNameTextView.text = name
         artistTextView.text = artist
+
+        // 使用Glide加载并显示图片
+        Glide.with(this)
+            .load(imageUrl)
+            .into(imageView)
     }
 
     private val playSongReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             val receivedSongName = intent?.getStringExtra("songName")
             val receivedArtist = intent?.getStringExtra("artist")
-            updateSongDetails(receivedSongName, receivedArtist)
+            val receivedImageUrl = intent?.getStringExtra("imageurl")
+            updateSongDetails(receivedSongName, receivedArtist, receivedImageUrl)
         }
     }
 
@@ -242,10 +255,10 @@ class MusicPlayer : AppCompatActivity(), View.OnClickListener {
 
         // 创建数据库
         override fun onCreate(db: SQLiteDatabase?) {
-            db?.execSQL("CREATE TABLE songs (_id TEXT PRIMARY KEY, name TEXT, artist TEXT, album TEXT)")
-            db?.execSQL("CREATE TABLE new_songs (_id INTEGER PRIMARY KEY AUTOINCREMENT, url TEXT, name TEXT, artist TEXT, album TEXT)")
-            db?.execSQL("CREATE TABLE song_heart (_id INTEGER PRIMARY KEY AUTOINCREMENT, url TEXT, name TEXT, artist TEXT, album TEXT)")
-        }
+            db?.execSQL("CREATE TABLE songs (_id TEXT PRIMARY KEY, name TEXT, artist TEXT, album TEXT, imageurl TEXT)")
+            db?.execSQL("CREATE TABLE new_songs (_id INTEGER PRIMARY KEY AUTOINCREMENT, url TEXT, name TEXT, artist TEXT, album TEXT, imageurl TEXT)")
+            db?.execSQL("CREATE TABLE song_heart (_id INTEGER PRIMARY KEY AUTOINCREMENT, url TEXT, name TEXT, artist TEXT, album TEXT, imageurl TEXT)")        }
+
 
         // 数据库升级
         override fun onUpgrade(db: SQLiteDatabase?, oldVersion: Int, newVersion: Int) {

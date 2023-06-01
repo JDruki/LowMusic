@@ -151,7 +151,7 @@ class MusicPlayerService : Service() {
             isPlaying = true
 
             // 更新通知中的按钮图标
-            val pauseResumeIcon = R.drawable.ic_pause
+            val pauseResumeIcon = R.drawable.ic_pause_enabled
         }
     }
 
@@ -303,7 +303,7 @@ class MusicPlayerService : Service() {
 
         // 设置通知操作（例如暂停/恢复）
         val pauseResumeIcon = if (mediaPlayer.isPlaying)
-            R.drawable.ic_pause else R.drawable.ic_play
+            R.drawable.ic_pause_enabled else R.drawable.ic_play
         notificationBuilder.addAction(
             NotificationCompat.Action(
                 pauseResumeIcon,
