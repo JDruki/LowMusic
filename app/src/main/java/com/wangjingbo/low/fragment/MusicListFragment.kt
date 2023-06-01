@@ -17,10 +17,12 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
+import android.widget.ImageView
 import android.widget.ListView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
+import com.squareup.picasso.Picasso
 import com.wangjingbo.low.Activity.MusicPlayer
 import com.wangjingbo.low.R
 import org.json.JSONException
@@ -84,7 +86,7 @@ class MusicListFragment : Fragment() {
         val dbHelper = DatabaseHelper(requireContext())
         val database = dbHelper.readableDatabase
 
-        val columns = arrayOf("_id", "name", "artist", "album")
+        val columns = arrayOf("_id", "name", "artist", "album", "imageurl")
 
         val cursor = database.query(
             "songs",
@@ -102,9 +104,10 @@ class MusicListFragment : Fragment() {
             val id = cursor.getString(cursor.getColumnIndex("_id"))
             val name = cursor.getString(cursor.getColumnIndex("name"))
             val artist = cursor.getString(cursor.getColumnIndex("artist"))
+            val imageUrl = cursor.getString(cursor.getColumnIndex("imageurl"))
             val album = cursor.getString(cursor.getColumnIndex("album"))
 
-            val song = Song(id, name, artist, album)
+            val song = Song(id, name, artist, album, imageUrl)
             musicList.add(song)
         }
 
@@ -167,7 +170,8 @@ class MusicListFragment : Fragment() {
         val id: String,
         val name: String,
         val artist: String,
-        val album: String
+        val album: String,
+        val imageUrl: String
     )
 
     inner class MusicListAdapter(
@@ -182,11 +186,12 @@ class MusicListFragment : Fragment() {
             val songNameTextView = view.findViewById<TextView>(R.id.songNameTextView)
             val artistTextView = view.findViewById<TextView>(R.id.artistTextView)
             val albumTextView = view.findViewById<TextView>(R.id.albumTextView)
-
+            val albumImageView = view.findViewById<ImageView>(R.id.albumImageView) // 添加ImageView
             val song = getItem(position)
             songNameTextView.text = song?.name
             artistTextView.text = song?.artist
             albumTextView.text = song?.album
+            Picasso.get().load(song?.imageUrl).into(albumImageView)
 
             return view
         }
@@ -196,10 +201,9 @@ class MusicListFragment : Fragment() {
         SQLiteOpenHelper(context, "songs.db", null, 2) {
 
         override fun onCreate(db: SQLiteDatabase?) {
-            db?.execSQL("CREATE TABLE songs (_id TEXT PRIMARY KEY, name TEXT, artist TEXT, album TEXT)")
-            db?.execSQL("CREATE TABLE new_songs (_id INTEGER PRIMARY KEY AUTOINCREMENT, url TEXT, name TEXT, artist TEXT, album TEXT)")
-            db?.execSQL("CREATE TABLE song_heart (_id INTEGER PRIMARY KEY AUTOINCREMENT, url TEXT, name TEXT, artist TEXT, album TEXT)")
-        }
+            db?.execSQL("CREATE TABLE songs (_id TEXT PRIMARY KEY, name TEXT, artist TEXT, album TEXT, imageurl TEXT)") // 添加 url 列
+            db?.execSQL("CREATE TABLE new_songs (_id INTEGER PRIMARY KEY AUTOINCREMENT, url TEXT, name TEXT, artist TEXT, album TEXT, imageurl TEXT)")
+            db?.execSQL("CREATE TABLE song_heart (_id INTEGER PRIMARY KEY AUTOINCREMENT, url TEXT, name TEXT, artist TEXT, album TEXT, imageurl TEXT)")        }
 
         override fun onUpgrade(db: SQLiteDatabase?, oldVersion: Int, newVersion: Int) {
             if (oldVersion < newVersion) {
@@ -254,6 +258,7 @@ class MusicListFragment : Fragment() {
                 put("name", song.name)
                 put("artist", song.artist)
                 put("album", song.album)
+                put("imageurl", song.imageUrl)
             }
 
             val selection = "name = ? AND artist = ? AND album = ?"

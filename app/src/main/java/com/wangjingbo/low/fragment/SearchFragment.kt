@@ -10,6 +10,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.*
 import androidx.fragment.app.Fragment
+import com.squareup.picasso.Picasso
 import com.wangjingbo.low.R
 import org.json.JSONObject
 import java.io.BufferedReader
@@ -88,8 +89,9 @@ class SearchFragment : Fragment() {
                             val artist = artists.getJSONObject(0).getString("name")
                             val album = song.getJSONObject("album")
                             val albumName = album.getString("name")
+                            val imageUrl = album.getJSONObject("artist").getString("img1v1Url") // 获取图片URL
 
-                            val songData = Song(songId, songName, artist, albumName)
+                            val songData = Song(songId, songName, artist, albumName, imageUrl) // 传递图片URL
                             musicList.add(songData)
                         }
 
@@ -110,7 +112,9 @@ class SearchFragment : Fragment() {
                 put("name", song.name)
                 put("artist", song.artist)
                 put("album", song.album)
+                put("imageurl", song.imageUrl) // 保存图片URL到数据库
             }
+
             val rowId = database.insert("songs", null, values)
             if (rowId != -1L) {
                 Toast.makeText(requireContext(), "音乐已加入音乐列表", Toast.LENGTH_SHORT).show()
@@ -128,7 +132,8 @@ class SearchFragment : Fragment() {
         val id: String,
         val name: String,
         val artist: String,
-        val album: String
+        val album: String,
+        val imageUrl: String // 新添加的属性
     )
 
     inner class MusicListAdapter(
@@ -143,23 +148,28 @@ class SearchFragment : Fragment() {
             val songNameTextView = view.findViewById<TextView>(R.id.songNameTextView)
             val artistTextView = view.findViewById<TextView>(R.id.artistTextView)
             val albumTextView = view.findViewById<TextView>(R.id.albumTextView)
+            val albumImageView = view.findViewById<ImageView>(R.id.albumImageView) // 添加ImageView
 
             val song = getItem(position)
             songNameTextView.text = song?.name
             artistTextView.text = song?.artist
             albumTextView.text = song?.album
 
+            // 使用第三方库（如Picasso、Glide等）加载并显示图片
+            Picasso.get().load(song?.imageUrl).into(albumImageView)
+
             return view
         }
     }
+
 
     inner class DatabaseHelper(context: Context) :
         SQLiteOpenHelper(context, "songs.db", null, 2) {
 
         override fun onCreate(db: SQLiteDatabase?) {
-            db?.execSQL("CREATE TABLE songs (_id TEXT PRIMARY KEY, name TEXT, artist TEXT, album TEXT)")
-            db?.execSQL("CREATE TABLE new_songs (_id INTEGER PRIMARY KEY AUTOINCREMENT, url TEXT, name TEXT, artist TEXT, album TEXT)")
-            db?.execSQL("CREATE TABLE song_heart (_id INTEGER PRIMARY KEY AUTOINCREMENT, url TEXT, name TEXT, artist TEXT, album TEXT)")        }
+            db?.execSQL("CREATE TABLE songs (_id TEXT PRIMARY KEY, name TEXT, artist TEXT, album TEXT, imageurl TEXT)") // 添加 url 列
+            db?.execSQL("CREATE TABLE new_songs (_id INTEGER PRIMARY KEY AUTOINCREMENT, url TEXT, name TEXT, artist TEXT, album TEXT, imageurl TEXT)")
+            db?.execSQL("CREATE TABLE song_heart (_id INTEGER PRIMARY KEY AUTOINCREMENT, url TEXT, name TEXT, artist TEXT, album TEXT, imageurl TEXT)")        }
 
         override fun onUpgrade(db: SQLiteDatabase?, oldVersion: Int, newVersion: Int) {
             if (oldVersion < newVersion) {
