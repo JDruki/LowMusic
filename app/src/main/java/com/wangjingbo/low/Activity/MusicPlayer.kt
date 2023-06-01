@@ -13,11 +13,9 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.wangjingbo.low.R
-import com.wangjingbo.low.Routh.PlayMode
 import com.wangjingbo.low.Server.MusicPlayerService
 import android.content.BroadcastReceiver
 import android.content.IntentFilter
-import android.media.MediaPlayer
 import android.widget.ImageView
 import com.bumptech.glide.Glide
 
@@ -105,13 +103,13 @@ class MusicPlayer : AppCompatActivity(), View.OnClickListener {
 
     }
     // 更新歌曲详情
-    private fun updateSongDetails(name: String?, artist: String?, imageUrl: String?) {
+    private fun updateSongDetails(name: String?, artist: String?, imageurl: String?) {
         songNameTextView.text = name
         artistTextView.text = artist
 
         // 使用Glide加载并显示图片
         Glide.with(this)
-            .load(imageUrl)
+            .load(imageurl)
             .into(imageView)
     }
 
@@ -119,7 +117,7 @@ class MusicPlayer : AppCompatActivity(), View.OnClickListener {
         override fun onReceive(context: Context?, intent: Intent?) {
             val receivedSongName = intent?.getStringExtra("songName")
             val receivedArtist = intent?.getStringExtra("artist")
-            val receivedImageUrl = intent?.getStringExtra("imageurl")
+            val receivedImageUrl = intent?.getStringExtra("imageUrl")
             updateSongDetails(receivedSongName, receivedArtist, receivedImageUrl)
         }
     }
@@ -147,7 +145,14 @@ class MusicPlayer : AppCompatActivity(), View.OnClickListener {
     }
 
     // 歌曲数据类
-    data class Song(val url: String, val name: String, val artist: String, val album : String) {
+    data class Song(
+//        val id:String,
+        val url: String,
+        val name: String,
+        val artist: String,
+        val album: String,
+        val imageUrl: String
+    ) {
     }
 
     // 切换播放模式

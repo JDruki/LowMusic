@@ -175,10 +175,11 @@ class MusicPlayerService : Service() {
             }
         }
         val previousSong = songsList[currentSongIndex]
-        playMusic(previousSong.url, previousSong.name, previousSong.artist, previousSong.album)
+        playMusic(previousSong.imageUrl, previousSong.name, previousSong.artist, previousSong.album)
         val playSongIntent = Intent("PLAY_SONG")
         playSongIntent.putExtra("songName", previousSong.name)
         playSongIntent.putExtra("artist", previousSong.artist)
+        playSongIntent.putExtra("imageUrl",previousSong.imageUrl)
         sendBroadcast(playSongIntent)
     }
 
@@ -216,17 +217,21 @@ class MusicPlayerService : Service() {
         val dbHelper = DatabaseHelper(this)
         val database = dbHelper.readableDatabase
 
-        val projection = arrayOf("url", "name", "artist", "album")
+        val projection = arrayOf("_id","url", "name", "artist", "album","imageurl")
         val cursor = database.query("new_songs", projection, null, null, null, null, null)
 
         songsList = ArrayList()
         if (cursor != null && cursor.moveToFirst()) {
             do {
+//                val id = cursor.getString(cursor.getColumnIndexOrThrow("_id"))
                 val album = cursor.getString(cursor.getColumnIndexOrThrow("album"))
                 val url = cursor.getString(cursor.getColumnIndexOrThrow("url"))
                 val name = cursor.getString(cursor.getColumnIndexOrThrow("name"))
                 val artist = cursor.getString(cursor.getColumnIndexOrThrow("artist"))
-                val song = MusicPlayer.Song(url, name, artist, album)
+                val imageUrl = cursor.getString(cursor.getColumnIndexOrThrow("imageurl"))
+
+                val song = MusicPlayer.Song(url, name, artist, album, imageUrl)
+//                val song = MusicPlayer.Song(id, url, name, artist, album)
 
                 songsList.add(song)
             } while (cursor.moveToNext())
