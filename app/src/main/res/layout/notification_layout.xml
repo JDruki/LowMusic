@@ -12,8 +12,9 @@
 
         <TextView
             android:id="@+id/nameTextView"
-            android:layout_width="154dp"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_weight="1"
             android:text="Music Name"
             android:textColor="#000"
             android:textSize="16sp"
@@ -21,8 +22,9 @@
 
         <TextView
             android:id="@+id/artistTextView"
-            android:layout_width="201dp"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_weight="1"
             android:text="Artist Name"
             android:textColor="#666"
             android:textSize="14sp" />
@@ -46,6 +48,7 @@
         android:thumb="@drawable/ic_pause" />
 
 </LinearLayout>
+
 
 
 

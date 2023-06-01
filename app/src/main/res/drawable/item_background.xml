@@ -1,0 +1,16 @@
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <solid android:color="#5B5B5B" /> <!-- 设置背景颜色 -->
+    <corners android:radius="8dp" /> <!-- 设置圆角半径 -->
+    <padding
+        android:left="8dp"
+        android:top="8dp"
+        android:right="8dp"
+        android:bottom="8dp" /> <!-- 设置内边距 -->
+    <gradient
+        android:startColor="#474747"
+        android:endColor="#818181"
+        android:angle="45" /> <!-- 设置渐变色 -->
+    <size
+        android:width="200dp"
+        android:height="80dp" /> <!-- 设置宽度和高度 -->
+</shape>

@@ -11,7 +11,7 @@
         android:id="@+id/searchEditText"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="Enter keywords" />
+        android:background="@drawable/rounded_edittext" />
 
     <Button
         android:id="@+id/searchButton"
@@ -23,6 +23,9 @@
         android:id="@+id/musicListView"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1" />
+        android:layout_weight="1"
+        android:divider="@drawable/rounded_divider"
+        android:dividerHeight="1dp" />
 
 </LinearLayout>
+
