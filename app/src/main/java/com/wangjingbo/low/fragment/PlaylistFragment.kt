@@ -9,9 +9,11 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
+import android.widget.ImageView
 import android.widget.ListView
 import android.widget.TextView
 import androidx.fragment.app.Fragment
+import com.squareup.picasso.Picasso
 import com.wangjingbo.low.Activity.MusicPlayer
 import com.wangjingbo.low.R
 
@@ -53,7 +55,7 @@ class PlaylistFragment : Fragment() {
         val dbHelper = DatabaseHelper(requireContext())
         val database = dbHelper.readableDatabase
 
-        val columns = arrayOf("_id", "url", "name", "artist", "album")
+        val columns = arrayOf("_id", "url", "name", "artist", "album", "imageurl")
 
         val cursor = database.query(
             "new_songs",
@@ -74,10 +76,11 @@ class PlaylistFragment : Fragment() {
             val name = cursor.getString(cursor.getColumnIndex("name"))
             val artist = cursor.getString(cursor.getColumnIndex("artist"))
             val album = cursor.getString(cursor.getColumnIndex("album"))
+            val imageurl = cursor.getString(cursor.getColumnIndex("imageurl"))
 
             // Check if the URL already exists in the set
             if (!urlSet.contains(url)) {
-                val song = Song(id, url, name, artist, album)
+                val song = Song(id, url, name, artist, album, imageurl ?: "") // Provide a default value for imageurl
                 playlist.add(song)
                 urlSet.add(url) // Add the URL to the set
             }
@@ -88,6 +91,8 @@ class PlaylistFragment : Fragment() {
 
         return playlist
     }
+
+
 
     private fun playSong(url: String, name: String, artist: String) {
         val intent = Intent(requireContext(), MusicPlayer::class.java)
@@ -120,7 +125,8 @@ class PlaylistFragment : Fragment() {
         val url: String,
         val name: String,
         val artist: String,
-        val album: String
+        val album: String,
+        val imageurl: String
     )
 
     inner class PlaylistAdapter(
@@ -135,11 +141,16 @@ class PlaylistFragment : Fragment() {
             val songNameTextView = view.findViewById<TextView>(R.id.songNameTextView)
             val artistTextView = view.findViewById<TextView>(R.id.artistTextView)
             val albumTextView = view.findViewById<TextView>(R.id.albumTextView)
+            val albumImageView = view.findViewById<ImageView>(R.id.albumImageView)
 
             val song = getItem(position)
             songNameTextView.text = song?.name
             artistTextView.text = song?.artist
             albumTextView.text = song?.album
+
+            // Use an image loading library (e.g., Picasso or Glide) to load and display the album image
+            // Assuming you are using Picasso library:
+            Picasso.get().load(song?.imageurl).into(albumImageView)
 
             return view
         }
@@ -149,9 +160,9 @@ class PlaylistFragment : Fragment() {
         SQLiteOpenHelper(context, "songs.db", null, 2) {
 
         override fun onCreate(db: SQLiteDatabase?) {
-            db?.execSQL("CREATE TABLE songs (_id TEXT PRIMARY KEY, name TEXT, artist TEXT, album TEXT)")
-            db?.execSQL("CREATE TABLE new_songs (_id INTEGER PRIMARY KEY AUTOINCREMENT, url TEXT, name TEXT, artist TEXT, album TEXT)")
-            db?.execSQL("CREATE TABLE song_heart (_id INTEGER PRIMARY KEY AUTOINCREMENT, url TEXT, name TEXT, artist TEXT, album TEXT)")        }
+            db?.execSQL("CREATE TABLE songs (_id TEXT PRIMARY KEY, name TEXT, artist TEXT, album TEXT, imageurl TEXT)")
+            db?.execSQL("CREATE TABLE new_songs (_id INTEGER PRIMARY KEY AUTOINCREMENT, url TEXT, name TEXT, artist TEXT, album TEXT, imageurl TEXT)")
+            db?.execSQL("CREATE TABLE song_heart (_id INTEGER PRIMARY KEY AUTOINCREMENT, url TEXT, name TEXT, artist TEXT, album TEXT, imageurl TEXT)")        }
 
         override fun onUpgrade(db: SQLiteDatabase?, oldVersion: Int, newVersion: Int) {
             if (oldVersion < newVersion) {
