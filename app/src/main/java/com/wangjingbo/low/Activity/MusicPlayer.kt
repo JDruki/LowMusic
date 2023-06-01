@@ -183,6 +183,7 @@ class MusicPlayer : AppCompatActivity(), View.OnClickListener {
                 put("artist", artist)
                 put("album", album)
                 put("url", songUrl)
+                put("imageurl",imageUrl)
             }
 
             val rowId = database.insert("song_heart", null, values)
