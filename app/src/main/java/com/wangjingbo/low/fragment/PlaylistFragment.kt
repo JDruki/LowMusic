@@ -39,7 +39,7 @@ class PlaylistFragment : Fragment() {
 
         playlistListView.setOnItemClickListener { _, _, position, _ ->
             val selectedSong = playlist[position]
-            playSong(selectedSong.url, selectedSong.name, selectedSong.artist)
+            playSong(selectedSong.url, selectedSong.name, selectedSong.artist,selectedSong.imageurl)
         }
 
         playlistListView.setOnItemLongClickListener { _, _, position, _ ->
@@ -94,13 +94,16 @@ class PlaylistFragment : Fragment() {
 
 
 
-    private fun playSong(url: String, name: String, artist: String) {
+    private fun playSong(url: String, name: String, artist: String, imageurl: String) {
         val intent = Intent(requireContext(), MusicPlayer::class.java)
         intent.putExtra("url", url)
         intent.putExtra("name", name)
         intent.putExtra("artist", artist)
+        intent.putExtra("imageurl", imageurl)
         startActivity(intent)
     }
+
+
 
     private fun deleteSong(song: Song) {
         val dbHelper = DatabaseHelper(requireContext())
@@ -129,6 +132,7 @@ class PlaylistFragment : Fragment() {
         val imageurl: String
     )
 
+
     inner class PlaylistAdapter(
         context: Context,
         resource: Int,
@@ -148,13 +152,20 @@ class PlaylistFragment : Fragment() {
             artistTextView.text = song?.artist
             albumTextView.text = song?.album
 
-            // Use an image loading library (e.g., Picasso or Glide) to load and display the album image
-            // Assuming you are using Picasso library:
+            // Use Picasso library to load and display the album image
             Picasso.get().load(song?.imageurl).into(albumImageView)
+
+            view.setOnClickListener {
+                val selectedSong = getItem(position)
+                if (selectedSong != null) {
+                    playSong(selectedSong.url, selectedSong.name, selectedSong.artist, selectedSong.imageurl)
+                }
+            }
 
             return view
         }
     }
+
 
     inner class DatabaseHelper(context: Context) :
         SQLiteOpenHelper(context, "songs.db", null, 2) {
